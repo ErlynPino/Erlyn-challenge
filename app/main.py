@@ -4,8 +4,10 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import SQLModel
 
 from app.config import settings
+from app.database import engine
 from app.routers import users
 
 logging.basicConfig(
@@ -18,6 +20,11 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Starting up")
+    try:
+        SQLModel.metadata.create_all(engine)
+        logger.info("DB tables verified/created")
+    except Exception as exc:
+        logger.warning("DB table creation skipped: %s", exc)
     yield
     logger.info("Shutting down")
 
