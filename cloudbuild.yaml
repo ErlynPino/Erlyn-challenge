@@ -34,25 +34,26 @@ steps:
       - --all-tags
       - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}"
 
-  # ── Step 5: Deploy to Cloud Run ───────────────────────────────────────────────
+  # ── Step 4: Deploy to Cloud Run ───────────────────────────────────────────────
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: Deploy
     waitFor:
       - Push
-    entrypoint: gcloud
+    entrypoint: bash
     args:
-      - run
-      - deploy
-      - $_SERVICE
-      - --image
-      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$COMMIT_SHA"
-      - --region
-      - $_REGION
-      - --platform
-      - managed
-      - --allow-unauthenticated
-      - --set-secrets
-      - DATABASE_URL=DATABASE_URL:latest
+      - -c
+      - |
+        set -e
+        gcloud run deploy $_SERVICE \
+          --image "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$COMMIT_SHA" \
+          --region $_REGION \
+          --platform managed \
+          --no-allow-unauthenticated \
+          --set-secrets DATABASE_URL=DATABASE_URL:latest
+        gcloud run services add-iam-policy-binding $_SERVICE \
+          --region $_REGION \
+          --member=allUsers \
+          --role=roles/run.invoker || true
 
 images:
   - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$COMMIT_SHA"
