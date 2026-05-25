@@ -23,25 +23,12 @@ steps:
         export DATABASE_URL="sqlite://"
         python -m pytest tests/ -v --tb=short --cov=app --cov-report=term-missing
 
-  # ── Step 3: Run Alembic migrations against production DB ─────────────────────
-  - name: "python:3.12-slim"
-    id: Migrate
-    waitFor:
-      - Test
-    secretEnv:
-      - DATABASE_URL
-    entrypoint: bash
-    args:
-      - -c
-      - |
-        pip install --quiet -r requirements.txt
-        alembic upgrade head
-  # ── Step 4: Push image to Artifact Registry ───────────────────────────────────
+  # ── Step 3: Push image to Artifact Registry ─────────────────────────────────
   - name: "gcr.io/cloud-builders/docker"
     id: Push
     waitFor:
       - Build
-      - Migrate
+      - Test
     args:
       - push
       - --all-tags
@@ -66,11 +53,6 @@ steps:
       - --allow-unauthenticated
       - --set-secrets
       - DATABASE_URL=DATABASE_URL:latest
-
-availableSecrets:
-  secretManager:
-    - versionName: projects/$PROJECT_ID/secrets/DATABASE_URL/versions/latest
-      env: DATABASE_URL
 
 images:
   - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$COMMIT_SHA"
